@@ -1,0 +1,6 @@
+http://localhost:3000/alldevices
+http://localhost:3000/setvideo/HEGHD0RhT6CaElS1AAAJ?video=mandy.mp4
+http://localhost:3000/setsound/Sx9Npji51gw95BW5AAAF?setsound=mute
+http://localhost:3000/settime/Sx9Npji51gw95BW5AAAF?settime=180
+http://localhost:3000/pause/Sx9Npji51gw95BW5AAAF
+http://localhost:3000/play/v2bB45wKh-1vQmTAAAAH
