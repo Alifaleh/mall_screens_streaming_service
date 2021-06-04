@@ -26,7 +26,7 @@ let injectVideo=(delay)=>{
                     }
                 }catch(e){}
             }
-        },300)
+        },1000)
     },delay)
 }
 
