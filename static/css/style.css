@@ -16,3 +16,9 @@ body{
     justify-content: center;
     align-items: center;
 }
+
+
+#videoPlayer{
+    width: 100vw;
+    height: 100%;
+}

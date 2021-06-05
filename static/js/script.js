@@ -11,22 +11,16 @@ socket.emit('connection');
 let injectVideo=(delay)=>{
     setTimeout(()=>{
         videoPlayerContainer.innerHTML = videosrc;
-        setTimeout(()=>{
-            for(x=0;x<100;x++){
-                try{
-                    let elem = document.getElementById("videoPlayer");
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen();
-                    } else if (elem.mozRequestFullScreen) {
-                        elem.mozRequestFullScreen();
-                    } else if (elem.webkitRequestFullscreen) {
-                        elem.webkitRequestFullscreen();
-                    } else if (elem.msRequestFullscreen) { 
-                        elem.msRequestFullscreen();
-                    }
-                }catch(e){}
-            }
-        },1000)
+        let elem = document.getElementById("videoPlayer");
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+            elem.mozRequestFullScreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) { 
+            elem.msRequestFullscreen();
+        }
     },delay)
 }
 
@@ -71,10 +65,7 @@ socket.on('setvideo', ()=>{
     socket.emit('setwillreload');
     videoPlayerContainer.innerHTML = "";
     window.open(window.location.href, '_blank');
-    window.close();
+    socket.close();
+    window.top.close();
 })
 
-// socket.emit('chat message', input.value);
-
-// socket.on('setyourvideo', function(msg) {
-// });
