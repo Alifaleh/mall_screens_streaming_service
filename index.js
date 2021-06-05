@@ -16,6 +16,7 @@ const port = 3000;
 let socketId = [];
 let videos = {};
 let willReload = {};
+let namedDevices = {};
 
 
 
@@ -91,6 +92,29 @@ app.get("/setvideo/:id",(req,res)=>{
 })
 
 
+app.get("/setname/:id",(req,res)=>{
+    delete namedDevices[req.params.id]
+    io.to(req.params.id).emit('setname',req.query.name);
+    res.send(`device name was set to (${req.params.id})`);
+})
+
+
+
+app.get("/getnamed",(req,res)=>{
+    res.send(JSON.stringify(namedDevices));
+})
+
+app.get("/getunnamed",(req,res)=>{
+    let unnamed = [];
+    for(let c=0;c<socketId.length;c++){
+        if(!namedDevices[socketId[c]]){
+            unnamed.push(socketId[c])
+        }
+    }
+    res.send(JSON.stringify(unnamed));
+})
+
+
 io.on('connection', (socket) => {
     console.log('a user connected');
     socketId.push(socket.id);
@@ -106,6 +130,13 @@ io.on('connection', (socket) => {
     socket.on('migratetoid', async (data)=>{
         videos[socket.id] = willReload[data]
         delete willReload[data];
+        delete namedDevices[data];
+    })
+
+    socket.on("named",async (data)=>{
+        delete namedDevices[socket.id]
+        namedDevices[socket.id] = data
+        console.log(namedDevices)
     })
 
 
@@ -113,6 +144,7 @@ io.on('connection', (socket) => {
         console.log('disconnected')
         socketId.splice(socketId.indexOf(socket.id),1)
         delete videos[socket.id];
+        delete namedDevices[socket.id];
         console.log(socketId)
     })
 
@@ -120,6 +152,22 @@ io.on('connection', (socket) => {
 
 
 
+
+
+//////////////////////////////////////////////////
+//views:
+//////////////////////////////////////////////////
+
+
+
+app.get("/admin-devices",(req,res)=>{
+    res.sendFile(__dirname+"/html/admin.html");
+})
+
+
+app.get("/admin-new",(req,res)=>{
+    res.sendFile(__dirname+"/html/new_devices.html");
+})
 
 
 

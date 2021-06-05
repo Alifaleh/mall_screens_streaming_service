@@ -24,6 +24,12 @@ let injectVideo=(delay)=>{
     },delay)
 }
 
+
+if(checkCookie("name")){
+    socket.emit('named',getCookie("name"));
+}
+
+
 socket.on('setid', function(msg) {
     if(getCookie("reloaded")=="true"){
         socket.emit('migratetoid',getCookie("id"));
@@ -69,3 +75,7 @@ socket.on('setvideo', ()=>{
     window.top.close();
 })
 
+socket.on('setname', (data)=>{
+    setCookie("name",data,"Thu, 18 Dec 2513 12:00:00 UTC");
+    location.reload();
+})
