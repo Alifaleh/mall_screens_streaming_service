@@ -13,10 +13,12 @@ const port = 3000;
 
 
 
-let socketId = [];
+// let socketId = [];
 let videos = {};
-let willReload = {};
-let namedDevices = {};
+// let willReload = {};
+// let namedDevices = {};
+
+let devices = {};
 
 
 
@@ -30,7 +32,9 @@ app.use('/static', express.static('static'));
 
 
 
-app.get("/video", function (req, res) {
+app.get("/video/:randomizer", function (req, res) {
+
+    console.log(req.params.randomizer)
 
     // Listing 3.
     const options = {};
@@ -59,7 +63,7 @@ app.get("/video", function (req, res) {
 
     res.setHeader("content-type", "video/mp4");
 
-    const filePath = "./videos/"+videos[req.cookies.id];
+    const filePath = "./videos/"+devices[req.cookies.id]["videos"][0];
 
     fs.stat(filePath, (err, stat) => {
         if (err) {
@@ -118,29 +122,54 @@ app.get("/video", function (req, res) {
     });
 });
 
+function makeid(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+   }
+   return result;
+}
+
+app.get("/getid",(req,res)=>{
+    const id = makeid(32);
+    devices[id] = {name:id, named:false, videos:["bigbuck.mp4"],isPlaying:true,isMuted:true,setTime:false,time:0,checked:Math.floor(Date.now() / 1000)}
+    res.send(id);
+})
+
+
+app.get("/deviceinfo/:id",(req,res)=>{
+    res.send(JSON.stringify(devices[req.params.id]));
+    devices[req.params.id]["setTime"]=false;
+    devices[req.params.id]["checked"]=Math.floor(Date.now() / 1000);
+})
+
+
 
 app.get('/setsound/:id',(req,res)=>{
-    io.to(req.params.id).emit('setsound',req.query.setsound);
+    devices[req.params.id]["isMuted"]=true?req.query.setsound=="mute":false;
     res.send(`sound was set to ${req.setsound}`)
 })
 
 app.get('/settime/:id',(req,res)=>{
-    io.to(req.params.id).emit('settime',req.query.settime);
+    devices[req.params.id]["setTime"]=true;
+    devices[req.params.id]["time"]=req.query.settime;
     res.send(`time was set to ${req.query.settime}`)
 })
 
 app.get('/pause/:id',(req,res)=>{
-    io.to(req.params.id).emit('pause');
+    devices[req.params.id]["isPlaying"]=false;
     res.send(`video was paused`)
 })
 
 app.get('/play/:id',(req,res)=>{
-    io.to(req.params.id).emit('play');
+    devices[req.params.id]["isPlaying"]=true;
     res.send(`video was played`)
 })
 
 app.get("/alldevices",(req,res)=>{
-    res.send(socketId)
+    res.send(JSON.stringify(devices));
 })
 
 app.get("/allvideos",(req,res)=>{
@@ -150,69 +179,149 @@ app.get("/allvideos",(req,res)=>{
 })
 
 app.get("/setvideo/:id",(req,res)=>{
-    videos[req.params.id] = req.query.video;
-    io.to(req.params.id).emit('setvideo',"setvideo");
+
     res.send(`video was set for the device (${req.params.id})`);
 })
 
 
 app.get("/setname/:id",(req,res)=>{
-    delete namedDevices[req.params.id]
-    io.to(req.params.id).emit('setname',req.query.name);
+    if(req.query.name==""){
+        devices[req.params.id]["named"]=false;
+        devices[req.params.id]["name"]=req.params.id;
+    }else{
+        devices[req.params.id]["named"]=true;
+        devices[req.params.id]["name"]=req.query.name;
+    }
     res.send(`device name was set to (${req.params.id})`);
 })
 
 
 
 app.get("/getnamed",(req,res)=>{
+    // object of named devices {"id":"name"}
+    const namedDevices = {};
+    for(device in devices){
+        if(devices[device]["named"]){
+            namedDevices[device]=devices[device]["name"];
+        }
+    }
     res.send(JSON.stringify(namedDevices));
 })
 
 app.get("/getunnamed",(req,res)=>{
     let unnamed = [];
-    for(let c=0;c<socketId.length;c++){
-        if(!namedDevices[socketId[c]]){
-            unnamed.push(socketId[c])
+    // array of unnamed devices [ids]
+    for(device in devices){
+        console.log(devices[device]["named"])
+        if(!devices[device]["named"]){
+            unnamed.push(devices[device]["name"]);
         }
     }
     res.send(JSON.stringify(unnamed));
 })
 
 
-io.on('connection', (socket) => {
-    console.log('a user connected');
-    socketId.push(socket.id);
-    videos[socket.id] = "bigbuck.mp4";
-    console.log(socketId);
-
-    socket.emit('setid', socket.id);
-
-    socket.on('setwillreload', async (data)=>{
-        willReload[socket.id]=videos[socket.id]
-    })
-
-    socket.on('migratetoid', async (data)=>{
-        videos[socket.id] = willReload[data]
-        delete willReload[data];
-        delete namedDevices[data];
-    })
-
-    socket.on("named",async (data)=>{
-        delete namedDevices[socket.id]
-        namedDevices[socket.id] = data
-        console.log(namedDevices)
-    })
 
 
-    socket.on('disconnect', () => {
-        console.log('disconnected')
-        socketId.splice(socketId.indexOf(socket.id),1)
-        delete videos[socket.id];
-        delete namedDevices[socket.id];
-        console.log(socketId)
-    })
 
-});
+// dibricated by alifaleh: socket.io not working on mart tv
+
+// app.get('/setsound/:id',(req,res)=>{
+//     io.to(req.params.id).emit('setsound',req.query.setsound);
+//     res.send(`sound was set to ${req.setsound}`)
+// })
+
+// app.get('/settime/:id',(req,res)=>{
+//     io.to(req.params.id).emit('settime',req.query.settime);
+//     res.send(`time was set to ${req.query.settime}`)
+// })
+
+// app.get('/pause/:id',(req,res)=>{
+//     io.to(req.params.id).emit('pause');
+//     res.send(`video was paused`)
+// })
+
+// app.get('/play/:id',(req,res)=>{
+//     io.to(req.params.id).emit('play');
+//     res.send(`video was played`)
+// })
+
+// app.get("/alldevices",(req,res)=>{
+//     res.send(socketId)
+// })
+
+// app.get("/allvideos",(req,res)=>{
+//     fs.readdir("videos", (err, files) => {
+//         res.send(files)
+//     })
+// })
+
+// app.get("/setvideo/:id",(req,res)=>{
+//     videos[req.params.id] = req.query.video;
+//     io.to(req.params.id).emit('setvideo',"setvideo");
+//     res.send(`video was set for the device (${req.params.id})`);
+// })
+
+
+// app.get("/setname/:id",(req,res)=>{
+//     delete namedDevices[req.params.id]
+//     io.to(req.params.id).emit('setname',req.query.name);
+//     res.send(`device name was set to (${req.params.id})`);
+// })
+
+
+
+// app.get("/getnamed",(req,res)=>{
+//     res.send(JSON.stringify(namedDevices));
+// })
+
+// app.get("/getunnamed",(req,res)=>{
+//     let unnamed = [];
+//     for(let c=0;c<socketId.length;c++){
+//         if(!namedDevices[socketId[c]]){
+//             unnamed.push(socketId[c])
+//         }
+//     }
+//     res.send(JSON.stringify(unnamed));
+// })
+
+
+
+
+// io.on('connection', (socket) => {
+//     console.log('a user connected');
+//     socketId.push(socket.id);
+//     videos[socket.id] = "bigbuck.mp4";
+//     console.log(socketId);
+
+//     socket.emit('setid', socket.id);
+
+//     socket.on('setwillreload', async (data)=>{
+//         willReload[socket.id]=videos[socket.id]
+//     })
+
+//     socket.on('migratetoid', async (data)=>{
+//         videos[socket.id] = willReload[data]
+//         delete willReload[data];
+//         delete namedDevices[data];
+//     })
+
+//     socket.on("named",async (data)=>{
+//         delete namedDevices[socket.id]
+//         namedDevices[socket.id] = data
+//         console.log(namedDevices)
+//     })
+
+
+//     socket.on('disconnect', () => {
+//         console.log('disconnected')
+//         socketId.splice(socketId.indexOf(socket.id),1)
+//         delete videos[socket.id];
+//         delete namedDevices[socket.id];
+//         console.log(socketId)
+//     })
+
+// });
 
 
 
